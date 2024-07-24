@@ -1,0 +1,7 @@
+modify_yaml_handler:
+  ros__parameters:
+    pkg_name: "hd_bringup"    # selected package where parameters are in 
+    params_folder: "config"   # root folder name containing parameters
+    search_deep: true         # search in all sub directories
+    save_install: true        # save change in install directory
+    save_home: true           # save in 'home' directory, folder name will be 'modify_yaml_result'

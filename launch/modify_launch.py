@@ -55,9 +55,9 @@ def generate_launch_description():
     description='log level')
   declare_default_params_file_cmd = DeclareLaunchArgument(
     'default_params_file',
-    default_value=os.path.join(params_dir, 'example.yaml'))
+    default_value=os.path.join(params_dir, 'modify_yaml.yaml'))
 
-  lifecycle_nodes = [ 'node_parameter_handler' ]
+  lifecycle_nodes = [ 'modify_yaml_handler' ]
 
   container = ComposableNodeContainer(
     name='node_parameter_handler_container',
@@ -69,9 +69,9 @@ def generate_launch_description():
     parameters=[configured_params],
     composable_node_descriptions=[
       ComposableNode(
-        name='node_parameter_handler',
+        name='modify_yaml_handler',
         package='node_parameter_handler',
-        plugin='node_parameter_handler::SetParameterCustom',
+        plugin='node_parameter_handler::ModifyYaml',
         parameters=[configured_params]),
       ComposableNode(
         package='nav2_lifecycle_manager',

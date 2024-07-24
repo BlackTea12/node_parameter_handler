@@ -5,14 +5,15 @@
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="BlackTea12@github.com">hd</maintainer>
-  <license>TODO: License declaration</license>
+  <license>MIT License</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-
+  
   <depend>rclcpp</depend>
   <depend>nav2_util</depend>
   <depend>nav2_common</depend>
   <depend>rclcpp_components</depend>
+  <depend>ament_index_cpp</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

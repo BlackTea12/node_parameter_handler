@@ -1,5 +1,5 @@
-#ifndef SET_PARAMETER_CUSTOM_HPP_
-#define SET_PARAMETER_CUSTOM_HPP_
+#ifndef MODIFY_YAML_CUSTOM_HPP_
+#define MODIFY_YAML_CUSTOM_HPP_
 
 #include <memory>
 #include <string>
@@ -7,26 +7,25 @@
 #include <mutex>
 
 #include "nav2_util/lifecycle_node.hpp"
-#include "rcl_interfaces/srv/set_parameters_atomically.hpp"
+#include "node_parameter_handler/file_reader.hpp"
 
 namespace node_parameter_handler
 {
-
 /**
- * @class node_parameter_handler::SetParameterCustom
+ * @class node_parameter_handler::ModifyYaml
  */
-class SetParameterCustom : public nav2_util::LifecycleNode
+class ModifyYaml : public nav2_util::LifecycleNode
 {
 public:
   /**
-   * @brief Constructor for node_parameter_handler::SetParameterCustom
+   * @brief Constructor for node_parameter_handler::ModifyYaml
    * @param options Additional options to control creation of the node.
    */
-  explicit SetParameterCustom(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit ModifyYaml(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   /**
-   * @brief Destructor for node_parameter_handler::SetParameterCustom
+   * @brief Destructor for node_parameter_handler::ModifyYaml
    */
-  ~SetParameterCustom();
+  ~ModifyYaml();
 
 protected:
   /**
@@ -86,23 +85,14 @@ protected:
   std::mutex dynamic_params_lock_;
 
 private:
-  /**
-   * @brief Change service name process
-   * @param new_srv_name new service name to change
-   */
-  void change_service_name(const std::string &new_srv_name);
-
-  /**
-   * @brief sendin request to service
-   */
-  void send_request() const;
-
-  ///@brief client, to set parameter from another node atomically 
-  rclcpp::Client<rcl_interfaces::srv::SetParametersAtomically>::SharedPtr client_;
-  ///@brief service name
-  std::string srv_name_;
+  ///@brief modifer pointer
+  std::unique_ptr<Modifier> modifier_;
+  ///@brief root package and parameter folder name
+  std::string root_pkg_name_, root_param_folder_name_;
+  ///@brief search and saving options
+  bool search_deep_, save_install_, save_home_;
 };
 
 }  // namespace node_parameter_handler
 
-#endif  // SET_PARAMETER_CUSTOM_HPP_
+#endif  // MODIFY_YAML_CUSTOM_HPP_

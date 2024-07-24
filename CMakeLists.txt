@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(nav2_util REQUIRED)
 find_package(nav2_common REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 nav2_package()
 
@@ -30,6 +31,13 @@ add_library(${library_name} SHARED
   src/set_parameter.cpp
 )
 
+set(library_direct_name ${PROJECT_NAME}_core_direct)
+
+add_library(${library_direct_name} SHARED 
+  src/file_reader.cpp
+  src/modify_yaml.cpp
+)
+
 set(dependencies
   rclcpp
   rclcpp_components
@@ -40,6 +48,10 @@ set(dependencies
 ament_target_dependencies(${library_name}
   ${dependencies}
 )
+ament_target_dependencies(${library_direct_name}
+  ${dependencies}
+  ament_index_cpp
+)
 
 ament_target_dependencies(${executable_name}
   ${dependencies}
@@ -48,8 +60,7 @@ ament_target_dependencies(${executable_name}
 target_link_libraries(${executable_name} ${library_name})
 
 rclcpp_components_register_nodes(${library_name} "node_parameter_handler::SetParameterCustom")
-
-
+rclcpp_components_register_nodes(${library_direct_name} "node_parameter_handler::ModifyYaml")
 
 install(DIRECTORY launch DESTINATION share/${PROJECT_NAME})
 install(DIRECTORY params DESTINATION share/${PROJECT_NAME})
@@ -58,7 +69,11 @@ install(TARGETS ${library_name}
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
-
+install(TARGETS ${library_direct_name}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 install(TARGETS ${executable_name}
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )

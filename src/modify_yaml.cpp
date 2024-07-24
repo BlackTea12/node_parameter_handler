@@ -1,12 +1,10 @@
 #include <chrono>
 #include <vector>
-#include <string>
 #include <utility>
-#include <limits>
 
 #include "lifecycle_msgs/msg/state.hpp"
 #include "nav2_util/node_utils.hpp"
-#include "node_parameter_handler/set_parameter.hpp"
+#include "node_parameter_handler/modify_yaml.hpp"
 
 using namespace std::chrono_literals;
 using rcl_interfaces::msg::ParameterType;
@@ -15,39 +13,49 @@ using std::placeholders::_1;
 namespace node_parameter_handler
 {
 
-SetParameterCustom::SetParameterCustom(const rclcpp::NodeOptions & options)
-: nav2_util::LifecycleNode("node_parameter_handler", "", options)
+ModifyYaml::ModifyYaml(const rclcpp::NodeOptions & options)
+: nav2_util::LifecycleNode("modify_yaml_handler", "", options), modifier_(nullptr), root_pkg_name_(""),
+  root_param_folder_name_(""), search_deep_(true), save_install_(true), save_home_(true)
 {
-  RCLCPP_INFO(get_logger(), "Creating node_parameter_handler server");
+  RCLCPP_INFO(get_logger(), "Creating modify_yaml_handler server");
+
+  // create class object
+  modifier_ = std::make_unique<Modifier>(&root_pkg_name_, &root_param_folder_name_);
 }
 
-SetParameterCustom::~SetParameterCustom()
+ModifyYaml::~ModifyYaml()
 {
 }
 
 nav2_util::CallbackReturn
-SetParameterCustom::on_configure(const rclcpp_lifecycle::State & /*state*/)
+ModifyYaml::on_configure(const rclcpp_lifecycle::State & /*state*/)
 {
   auto node = shared_from_this();
 
-  RCLCPP_INFO(get_logger(), "Configuring node_parameter_handler interface");
+  RCLCPP_INFO(get_logger(), "Configuring modify_yaml_handler interface");
 
   // declare parameter
-  declare_parameter("service_name", rclcpp::ParameterValue("/local_costmap/local_costmap/set_parameters_atomically"));
-  get_parameter("service_name", srv_name_);
-
-  // create client
-  client_ = node->create_client<rcl_interfaces::srv::SetParametersAtomically>(srv_name_);
+  declare_parameter("pkg_name", rclcpp::ParameterValue("node_parameter_handler"));
+  declare_parameter("params_folder", rclcpp::ParameterValue("params"));
+  declare_parameter("search_deep", rclcpp::ParameterValue(true));
+  declare_parameter("save_install", rclcpp::ParameterValue(true));
+  declare_parameter("save_home", rclcpp::ParameterValue(true));
+  get_parameter("pkg_name", root_pkg_name_);
+  get_parameter("params_folder", root_param_folder_name_);
+  get_parameter("search_deep", search_deep_);
+  get_parameter("save_install", save_install_);
+  get_parameter("save_home", save_home_);
 
   // create dynamic parameter handler
   dyn_params_handler_ = node->add_on_set_parameters_callback(
-    std::bind(&SetParameterCustom::dynamicParametersCallback, this, _1));
+    std::bind(&ModifyYaml::dynamicParametersCallback, this, _1));
 
+  modifier_->start(search_deep_, save_install_, save_home_);
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
 nav2_util::CallbackReturn
-SetParameterCustom::on_activate(const rclcpp_lifecycle::State & /*state*/)
+ModifyYaml::on_activate(const rclcpp_lifecycle::State & /*state*/)
 {
   RCLCPP_INFO(get_logger(), "Activating");
 
@@ -58,7 +66,7 @@ SetParameterCustom::on_activate(const rclcpp_lifecycle::State & /*state*/)
 }
 
 nav2_util::CallbackReturn
-SetParameterCustom::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
+ModifyYaml::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 {
   RCLCPP_INFO(get_logger(), "Deactivating");
 
@@ -69,22 +77,21 @@ SetParameterCustom::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 }
 
 nav2_util::CallbackReturn
-SetParameterCustom::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
+ModifyYaml::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 {
   RCLCPP_INFO(get_logger(), "Cleaning up");
-  client_.reset();
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
 nav2_util::CallbackReturn
-SetParameterCustom::on_shutdown(const rclcpp_lifecycle::State &)
+ModifyYaml::on_shutdown(const rclcpp_lifecycle::State &)
 {
   RCLCPP_INFO(get_logger(), "Shutting down");
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
 rcl_interfaces::msg::SetParametersResult
-SetParameterCustom::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters)
+ModifyYaml::dynamicParametersCallback(std::vector<rclcpp::Parameter> parameters)
 {
   rcl_interfaces::msg::SetParametersResult result;
 
@@ -109,8 +116,18 @@ SetParameterCustom::dynamicParametersCallback(std::vector<rclcpp::Parameter> par
     }
 
     if (type == ParameterType::PARAMETER_STRING) {
-      if (name == "service_name") {
-        change_service_name(parameter.as_string());
+      if (name == "pkg_name") {
+        root_pkg_name_ = parameter.as_string();
+      } else if (name == "params_folder") {
+        root_param_folder_name_ = parameter.as_string();
+      }
+    } else if (type == ParameterType::PARAMETER_BOOL) {
+      if (name == "search_deep") {
+        search_deep_ = parameter.as_bool();
+      } else if (name == "save_install") {
+        save_install_ = parameter.as_bool();
+      } else if (name == "save_home") {
+        save_home_ = parameter.as_bool();
       }
     }
     dynamic_params_lock_.unlock();
@@ -120,34 +137,6 @@ SetParameterCustom::dynamicParametersCallback(std::vector<rclcpp::Parameter> par
   return result;
 }
 
-void SetParameterCustom::change_service_name(const std::string & new_srv_name)
-{
-  // Ensure we are in a state that allows this operation
-  if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
-    RCLCPP_ERROR(get_logger(), "Cannot change service name when node is not active");
-    return;
-  }
-
-  if (client_) {
-    client_.reset();
-  }
-
-  auto node = shared_from_this();
-  
-  // update service name and create new client
-  srv_name_ = new_srv_name;
-  client_ = node->create_client<rcl_interfaces::srv::SetParametersAtomically>(srv_name_);
-}
-
-
-void SetParameterCustom::send_request() const
-{
-  auto parameter = rcl_interfaces::msg::Parameter();
-  auto request = std::make_shared<rcl_interfaces::srv::SetParametersAtomically::Request>();
-
-  
-}
-
 }
 
 #include "rclcpp_components/register_node_macro.hpp"
@@ -155,4 +144,4 @@ void SetParameterCustom::send_request() const
 // Register the component with class_loader.
 // This acts as a sort of entry point, allowing the component to be discoverable when its library
 // is being loaded into a running process.
-RCLCPP_COMPONENTS_REGISTER_NODE(node_parameter_handler::SetParameterCustom)
+RCLCPP_COMPONENTS_REGISTER_NODE(node_parameter_handler::ModifyYaml)
