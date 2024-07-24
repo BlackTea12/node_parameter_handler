@@ -1,0 +1,3 @@
+node_parameter_handler:
+  ros__parameters:
+    service_name: "/global_costmap/global_costmap/set_parameters_atomically"
