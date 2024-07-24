@@ -1,0 +1,8 @@
+odom_topic: odom
+robot_base_frame: base_link
+global_frame_id: map
+max_velocity: [1.0, 0.0, 1.04]
+min_velocity: [-0.1, 0.0, -1.04]
+max_accel: [1.0, 0.0, 0.8]
+max_decel: [-1.0, 0.0, -0.8]
+_timeout: 0.5

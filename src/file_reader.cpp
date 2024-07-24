@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+
 #include "node_parameter_handler/file_reader.hpp"
 #include "ament_index_cpp/get_package_share_directory.hpp"
 
@@ -19,7 +21,23 @@ bool Modifier::start(const bool &search_deep, const bool &save_install, const bo
   std::vector<std::string> directories = get_file_directories(package_share_directory, search_deep);
 
   if (save_install) {
-    
+    for (auto const & dir : directories) {
+      std::ifstream file(dir);  // open file
+      std::cout << "opening in " << dir.c_str() << std::endl;
+      if (!file.is_open()) {  // check if file opened successfully
+        std::cerr << "opening file failed" << std::endl;
+        return false;
+      }
+
+      std::string line;
+      std::string str = "odom_topic";
+      int pos = 0;
+      while (std::getline(file, line)) {
+        if (line.find(str, pos) != std::string::npos) {
+          std::cout << "found!" << std::endl;
+        }
+      }
+    }
   }
 
   if (save_home) {
