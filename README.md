@@ -2,12 +2,12 @@
 Handling specific node's parameter by service
 
 
-### how to use
+### how to use (not finished)
 
     ros2 launch node_parameter_handler example_launch.py
 
 `service_name` must be some node's **srv/SetParametersAtomically** service type. By directly making a client by this name, we expect to change parameters.
-
+Function is not complete, however I assume the base template is ready.
 
 ### same when entering command in terminal
 
